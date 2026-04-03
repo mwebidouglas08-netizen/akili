@@ -886,12 +886,15 @@ function Sec({ label, children }) {
   );
 }
 
+
 // ════════════════════════════════════════════════════════════════════════════
-// ROOT
+// ROOT — includes PWA install banner
 // ════════════════════════════════════════════════════════════════════════════
 export default function App() {
   const [screen, setScreen] = useState("splash");
   const [user, setUser]     = useState(null);
+  const [dismissed, setDismissed] = useState(false);
+  const { prompt, install } = useInstallPrompt();
   const savedUser = storage.get(STORAGE_KEY);
 
   const handleStart = (useSaved) => {
@@ -902,20 +905,11 @@ export default function App() {
     }
   };
 
-  if (screen==="splash")      return <Splash onStart={handleStart} hasSavedUser={!!savedUser} />;
-  if (screen==="onboarding")  return <Onboarding onComplete={(f) => { storage.set(STORAGE_KEY,f); setUser(f); setScreen("app"); }} />;
-  if (screen==="app" && user) return <AppShell user={user} setUser={setUser} />;
-  return null;
-}
-
-// ── Root wrapper that injects PWA install banner globally ────────────────────
-const _OriginalApp = App;
-export default function AppWithPWA() {
-  const { prompt, install } = useInstallPrompt();
-  const [dismissed, setDismissed] = useState(false);
   return (
     <>
-      <_OriginalApp />
+      {screen==="splash"     && <Splash onStart={handleStart} hasSavedUser={!!savedUser} />}
+      {screen==="onboarding" && <Onboarding onComplete={(f) => { storage.set(STORAGE_KEY,f); setUser(f); setScreen("app"); }} />}
+      {screen==="app" && user && <AppShell user={user} setUser={setUser} />}
       {!dismissed && <InstallBanner prompt={prompt} install={install} onDismiss={() => setDismissed(true)} />}
     </>
   );
