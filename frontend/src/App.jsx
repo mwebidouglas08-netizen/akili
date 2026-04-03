@@ -1,6 +1,58 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import "./index.css";
 
+// ── PWA Install Prompt ────────────────────────────────────────────────────────
+function useInstallPrompt() {
+  const [prompt, setPrompt] = useState(null);
+  const [installed, setInstalled] = useState(false);
+  useEffect(() => {
+    const handler = (e) => { e.preventDefault(); setPrompt(e); };
+    window.addEventListener("beforeinstallprompt", handler);
+    window.addEventListener("appinstalled", () => { setInstalled(true); setPrompt(null); });
+    if (window.matchMedia("(display-mode: standalone)").matches) setInstalled(true);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+  const install = async () => {
+    if (!prompt) return;
+    prompt.prompt();
+    const { outcome } = await prompt.userChoice;
+    if (outcome === "accepted") setInstalled(true);
+    setPrompt(null);
+  };
+  return { prompt, installed, install };
+}
+
+function InstallBanner({ prompt, install, onDismiss }) {
+  if (!prompt) return null;
+  return (
+    <div style={{
+      position:"fixed", bottom:16, left:16, right:16, zIndex:9999,
+      background:"#0D1117", border:"1px solid rgba(13,158,117,0.4)",
+      borderRadius:16, padding:"14px 18px",
+      display:"flex", alignItems:"center", gap:14,
+      boxShadow:"0 8px 32px rgba(0,0,0,0.4)",
+    }}>
+      <div style={{ width:44, height:44, borderRadius:12, background:"#0D9E75",
+        display:"flex", alignItems:"center", justifyContent:"center",
+        fontSize:22, fontWeight:700, color:"#fff", flexShrink:0, fontFamily:"'Space Mono',monospace" }}>A</div>
+      <div style={{ flex:1 }}>
+        <div style={{ fontSize:14, fontWeight:700, color:"#fff", marginBottom:2 }}>Install Akili</div>
+        <div style={{ fontSize:12, color:"rgba(255,255,255,0.45)" }}>Add to home screen — works offline</div>
+      </div>
+      <button onClick={install} style={{
+        background:"#0D9E75", color:"#fff", border:"none",
+        borderRadius:50, padding:"8px 20px", fontSize:13, fontWeight:700,
+        cursor:"pointer", fontFamily:"'Sora',sans-serif", whiteSpace:"nowrap",
+      }}>Install</button>
+      <button onClick={onDismiss} style={{
+        background:"none", border:"none", color:"rgba(255,255,255,0.35)",
+        fontSize:22, cursor:"pointer", lineHeight:1, flexShrink:0, padding:"0 4px",
+      }}>×</button>
+    </div>
+  );
+}
+
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 const COUNTIES = ["Nairobi","Mombasa","Kisumu","Nakuru","Eldoret","Thika","Machakos","Meru","Nyeri","Kisii","Garissa","Kakamega","Other"];
 const SKILLS   = ["Sales","Customer service","Data entry","Graphic design","Social media","Driving","Cooking","Tailoring","Construction","Teaching","IT / Tech","Farming","Writing","Healthcare","Accounting"];
@@ -854,4 +906,17 @@ export default function App() {
   if (screen==="onboarding")  return <Onboarding onComplete={(f) => { storage.set(STORAGE_KEY,f); setUser(f); setScreen("app"); }} />;
   if (screen==="app" && user) return <AppShell user={user} setUser={setUser} />;
   return null;
+}
+
+// ── Root wrapper that injects PWA install banner globally ────────────────────
+const _OriginalApp = App;
+export default function AppWithPWA() {
+  const { prompt, install } = useInstallPrompt();
+  const [dismissed, setDismissed] = useState(false);
+  return (
+    <>
+      <_OriginalApp />
+      {!dismissed && <InstallBanner prompt={prompt} install={install} onDismiss={() => setDismissed(true)} />}
+    </>
+  );
 }
