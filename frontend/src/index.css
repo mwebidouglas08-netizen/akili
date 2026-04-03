@@ -1,0 +1,45 @@
+:root {
+  --teal: #0D9E75;
+  --teal-light: #E1F5EE;
+  --teal-dark: #085041;
+  --purple: #6C4FD4;
+  --purple-light: #EEEDFE;
+  --amber: #D97706;
+  --amber-light: #FEF3C7;
+  --red: #DC2626;
+  --red-light: #FEE2E2;
+  --bg: #F7F6F3;
+  --surface: #FFFFFF;
+  --text: #1A1A1A;
+  --text-muted: #6B7280;
+  --border: rgba(0, 0, 0, 0.08);
+  --radius: 16px;
+  --radius-sm: 10px;
+  --radius-pill: 50px;
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 20px rgba(0,0,0,0.08);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Sora', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+button {
+  font-family: 'Sora', sans-serif;
+  cursor: pointer;
+}
+
+input, textarea {
+  font-family: 'Sora', sans-serif;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 3px; }
