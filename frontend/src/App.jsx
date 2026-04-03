@@ -1,54 +1,206 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import "./index.css";
 
-// ── PWA Install Prompt ────────────────────────────────────────────────────────
-function useInstallPrompt() {
-  const [prompt, setPrompt] = useState(null);
-  const [installed, setInstalled] = useState(false);
-  useEffect(() => {
-    const handler = (e) => { e.preventDefault(); setPrompt(e); };
-    window.addEventListener("beforeinstallprompt", handler);
-    window.addEventListener("appinstalled", () => { setInstalled(true); setPrompt(null); });
-    if (window.matchMedia("(display-mode: standalone)").matches) setInstalled(true);
-    return () => window.removeEventListener("beforeinstallprompt", handler);
-  }, []);
-  const install = async () => {
-    if (!prompt) return;
-    prompt.prompt();
-    const { outcome } = await prompt.userChoice;
-    if (outcome === "accepted") setInstalled(true);
-    setPrompt(null);
-  };
-  return { prompt, installed, install };
+// ── PWA Install — smart cross-platform banner ─────────────────────────────────
+const INSTALL_DISMISSED_KEY = "akili_install_dismissed";
+
+function detectPlatform() {
+  const ua = navigator.userAgent || "";
+  const isIOS = /iphone|ipad|ipod/i.test(ua);
+  const isAndroid = /android/i.test(ua);
+  const isSafari = /safari/i.test(ua) && !/chrome/i.test(ua);
+  const isStandalone =
+    window.matchMedia("(display-mode: standalone)").matches ||
+    window.navigator.standalone === true;
+  return { isIOS, isAndroid, isSafari, isStandalone };
 }
 
-function InstallBanner({ prompt, install, onDismiss }) {
-  if (!prompt) return null;
+function useInstallBanner() {
+  const [nativePrompt, setNativePrompt] = useState(null);
+  const [show, setShow] = useState(false);
+  const [platform, setPlatform] = useState({});
+
+  useEffect(() => {
+    const p = detectPlatform();
+    setPlatform(p);
+
+    // Already running as installed app — never show
+    if (p.isStandalone) return;
+
+    // Already dismissed in this browser
+    const dismissed = localStorage.getItem(INSTALL_DISMISSED_KEY);
+    if (dismissed) return;
+
+    // Listen for Android/Chrome native prompt
+    const handler = (e) => {
+      e.preventDefault();
+      setNativePrompt(e);
+      setShow(true);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+
+    // For iOS Safari and all other browsers — show manual instructions banner
+    // after a short delay so it doesn't clash with page load
+    const timer = setTimeout(() => setShow(true), 3000);
+
+    window.addEventListener("appinstalled", () => {
+      setShow(false);
+      localStorage.setItem(INSTALL_DISMISSED_KEY, "1");
+    });
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handler);
+      clearTimeout(timer);
+    };
+  }, []);
+
+  const install = async () => {
+    if (nativePrompt) {
+      nativePrompt.prompt();
+      const { outcome } = await nativePrompt.userChoice;
+      if (outcome === "accepted") {
+        setShow(false);
+        localStorage.setItem(INSTALL_DISMISSED_KEY, "1");
+      }
+      setNativePrompt(null);
+    }
+  };
+
+  const dismiss = () => {
+    setShow(false);
+    localStorage.setItem(INSTALL_DISMISSED_KEY, "1");
+  };
+
+  return { show, nativePrompt, install, dismiss, platform };
+}
+
+function InstallBanner() {
+  const { show, nativePrompt, install, dismiss, platform } = useInstallBanner();
+  const [showIOSSteps, setShowIOSSteps] = useState(false);
+
+  if (!show) return null;
+
+  const isIOS = platform.isIOS;
+  const hasNative = !!nativePrompt;
+
   return (
-    <div style={{
-      position:"fixed", bottom:16, left:16, right:16, zIndex:9999,
-      background:"#0D1117", border:"1px solid rgba(13,158,117,0.4)",
-      borderRadius:16, padding:"14px 18px",
-      display:"flex", alignItems:"center", gap:14,
-      boxShadow:"0 8px 32px rgba(0,0,0,0.4)",
-    }}>
-      <div style={{ width:44, height:44, borderRadius:12, background:"#0D9E75",
-        display:"flex", alignItems:"center", justifyContent:"center",
-        fontSize:22, fontWeight:700, color:"#fff", flexShrink:0, fontFamily:"'Space Mono',monospace" }}>A</div>
-      <div style={{ flex:1 }}>
-        <div style={{ fontSize:14, fontWeight:700, color:"#fff", marginBottom:2 }}>Install Akili</div>
-        <div style={{ fontSize:12, color:"rgba(255,255,255,0.45)" }}>Add to home screen — works offline</div>
+    <>
+      {/* Main banner */}
+      <div style={{
+        position: "fixed", bottom: 16, left: 12, right: 12, zIndex: 99999,
+        background: "#0D1117",
+        border: "1px solid rgba(13,158,117,0.5)",
+        borderRadius: 18, overflow: "hidden",
+        boxShadow: "0 12px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(13,158,117,0.1)",
+        fontFamily: "'Sora', sans-serif",
+      }}>
+        {/* Top bar */}
+        <div style={{
+          background: "rgba(13,158,117,0.08)",
+          borderBottom: "1px solid rgba(13,158,117,0.15)",
+          padding: "12px 16px",
+          display: "flex", alignItems: "center", gap: 12,
+        }}>
+          {/* App icon */}
+          <div style={{
+            width: 46, height: 46, borderRadius: 12,
+            background: "linear-gradient(135deg, #0D9E75, #064E3B)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0, boxShadow: "0 4px 12px rgba(13,158,117,0.4)",
+          }}>
+            <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 20, fontWeight: 700, color: "#fff" }}>A</span>
+          </div>
+
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#fff", marginBottom: 2 }}>
+              Install Akili
+            </div>
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
+              {hasNative
+                ? "Add to your home screen — free, no app store needed"
+                : isIOS
+                ? "Add to your iPhone home screen in seconds"
+                : "Install for quick access — works offline"}
+            </div>
+          </div>
+
+          <button onClick={dismiss} style={{
+            background: "none", border: "none",
+            color: "rgba(255,255,255,0.3)", fontSize: 22,
+            cursor: "pointer", lineHeight: 1, padding: "4px 6px", flexShrink: 0,
+          }}>×</button>
+        </div>
+
+        {/* Action area */}
+        <div style={{ padding: "12px 16px" }}>
+          {hasNative ? (
+            // Android Chrome — native install button
+            <button onClick={install} style={{
+              width: "100%", padding: "13px",
+              background: "#0D9E75", color: "#fff",
+              border: "none", borderRadius: 12,
+              fontSize: 15, fontWeight: 700,
+              cursor: "pointer", fontFamily: "'Sora',sans-serif",
+              boxShadow: "0 4px 16px rgba(13,158,117,0.4)",
+              transition: "opacity 0.2s",
+            }}>
+              Add to Home Screen
+            </button>
+          ) : isIOS ? (
+            // iOS Safari — step by step instructions
+            <>
+              <button
+                onClick={() => setShowIOSSteps((s) => !s)}
+                style={{
+                  width: "100%", padding: "13px",
+                  background: "rgba(13,158,117,0.15)",
+                  color: "#0D9E75", border: "1px solid rgba(13,158,117,0.3)",
+                  borderRadius: 12, fontSize: 15, fontWeight: 700,
+                  cursor: "pointer", fontFamily: "'Sora',sans-serif",
+                }}>
+                {showIOSSteps ? "Hide steps" : "Show me how →"}
+              </button>
+              {showIOSSteps && (
+                <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+                  {[
+                    { n: 1, icon: "⬆️", text: 'Tap the Share button at the bottom of Safari' },
+                    { n: 2, icon: "📲", text: 'Scroll down and tap "Add to Home Screen"' },
+                    { n: 3, icon: "✅", text: 'Tap "Add" — Akili appears on your home screen' },
+                  ].map((s) => (
+                    <div key={s.n} style={{
+                      display: "flex", alignItems: "flex-start", gap: 12,
+                      background: "rgba(255,255,255,0.04)",
+                      borderRadius: 10, padding: "10px 12px",
+                    }}>
+                      <div style={{
+                        width: 28, height: 28, borderRadius: "50%",
+                        background: "rgba(13,158,117,0.2)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: 12, fontWeight: 700, color: "#0D9E75", flexShrink: 0,
+                      }}>{s.n}</div>
+                      <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", lineHeight: 1.5, paddingTop: 4 }}>
+                        {s.icon} {s.text}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            // Desktop / other browsers
+            <div style={{
+              display: "flex", alignItems: "center", gap: 10,
+              background: "rgba(255,255,255,0.04)", borderRadius: 12, padding: "12px 14px",
+            }}>
+              <span style={{ fontSize: 20 }}>💻</span>
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>
+                Click the install icon <strong style={{ color: "#0D9E75" }}>⊕</strong> in your browser address bar to install Akili on your device.
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-      <button onClick={install} style={{
-        background:"#0D9E75", color:"#fff", border:"none",
-        borderRadius:50, padding:"8px 20px", fontSize:13, fontWeight:700,
-        cursor:"pointer", fontFamily:"'Sora',sans-serif", whiteSpace:"nowrap",
-      }}>Install</button>
-      <button onClick={onDismiss} style={{
-        background:"none", border:"none", color:"rgba(255,255,255,0.35)",
-        fontSize:22, cursor:"pointer", lineHeight:1, flexShrink:0, padding:"0 4px",
-      }}>×</button>
-    </div>
+    </>
   );
 }
 
@@ -888,13 +1040,11 @@ function Sec({ label, children }) {
 
 
 // ════════════════════════════════════════════════════════════════════════════
-// ROOT — includes PWA install banner
+// ROOT
 // ════════════════════════════════════════════════════════════════════════════
 export default function App() {
   const [screen, setScreen] = useState("splash");
   const [user, setUser]     = useState(null);
-  const [dismissed, setDismissed] = useState(false);
-  const { prompt, install } = useInstallPrompt();
   const savedUser = storage.get(STORAGE_KEY);
 
   const handleStart = (useSaved) => {
@@ -910,7 +1060,7 @@ export default function App() {
       {screen==="splash"     && <Splash onStart={handleStart} hasSavedUser={!!savedUser} />}
       {screen==="onboarding" && <Onboarding onComplete={(f) => { storage.set(STORAGE_KEY,f); setUser(f); setScreen("app"); }} />}
       {screen==="app" && user && <AppShell user={user} setUser={setUser} />}
-      {!dismissed && <InstallBanner prompt={prompt} install={install} onDismiss={() => setDismissed(true)} />}
+      <InstallBanner />
     </>
   );
 }
