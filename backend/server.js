@@ -1,9 +1,9 @@
 require("dotenv").config();
-const express = require("express");
-const cors    = require("cors");
-const helmet  = require("helmet");
+const express   = require("express");
+const cors      = require("cors");
+const helmet    = require("helmet");
 const rateLimit = require("express-rate-limit");
-const path    = require("path");
+const path      = require("path");
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
@@ -23,8 +23,8 @@ const CRISIS_KEYWORDS = [
   "suicide","kill myself","end my life","kujiua","no reason to live",
   "want to die","better off dead","nafsi yangu","nijiue","mauti",
 ];
-const detectCrisis = (text) =>
-  text ? CRISIS_KEYWORDS.some((kw) => text.toLowerCase().includes(kw)) : false;
+const detectCrisis = (t) =>
+  t ? CRISIS_KEYWORDS.some((kw) => t.toLowerCase().includes(kw)) : false;
 
 // ── System prompts ────────────────────────────────────────────────────────────
 function buildSystemPrompt(mode, user) {
@@ -36,122 +36,104 @@ function buildSystemPrompt(mode, user) {
     user.mood   ? `Current mood: ${user.mood}`    : null,
   ].filter(Boolean).join(" | ");
 
-  if (mode === "wellness") return `You are Akili Afya, a warm, culturally sensitive AI mental wellness companion for Kenyan youth.
+  if (mode === "wellness") {
+    return `You are Akili Afya, a warm, culturally sensitive AI mental wellness companion built for Kenyan youth.
 User profile: ${profile}
-- Mirror the user's language (English or Kiswahili).
-- Validate feelings before advice. Lead with empathy.
-- Keep replies to 3-5 sentences unless more is needed.
-- If ANY message has suicidal ideation: acknowledge pain, give Befrienders Kenya helpline (0800 723 253, toll-free 24/7), encourage them to call.
-- Ground advice in Kenyan context: family, community, faith.
-- Never diagnose. Encourage professional help for clinical issues.
-- Remember the full conversation history and build on it.`;
 
-  return `You are Akili Kazi, a practical AI career coach for Kenyan youth.
+Instructions:
+- Always respond in the same language the user writes in — English or Kiswahili.
+- Lead every response with empathy. Validate feelings before any advice.
+- Keep replies conversational and concise — 3 to 5 sentences unless the user clearly needs more.
+- If the user expresses suicidal ideation, severe distress, or any crisis signal: acknowledge their pain with compassion, provide the Befrienders Kenya crisis helpline (0800 723 253 — free call, available 24 hours a day, 7 days a week), and strongly encourage them to reach out.
+- Ground your advice in Kenyan cultural context — reference family, community, faith, and local realities where relevant.
+- Never diagnose any condition. Always encourage professional support for serious mental health concerns.
+- You have memory of the entire conversation — use it. Reference what the user has shared earlier to show you are listening and learning about them.
+- Be human, warm, and real. Avoid robotic or clinical language.`;
+  }
+
+  return `You are Akili Kazi, a sharp and practical AI career coach for Kenyan youth.
 User profile: ${profile}
-- Give specific, actionable Kenya-focused career advice.
-- Reference real Kenyan employers (Safaricom, KCB, Equity Bank, Nation Media), job boards (BrighterMonday, Fuzu), gig platforms (Glovo, Bolt, Sendy), government programmes (Kazi Mtaani, Ajira Digital, Hustler Fund).
-- Help with CV writing, interview prep, salary negotiation, side hustles.
-- Keep responses focused and actionable — 3-6 sentences.
-- Be encouraging but realistic about the Kenyan job market.
-- Remember the full conversation and build on it.`;
+
+Instructions:
+- Give specific, actionable, Kenya-focused career advice every time.
+- Reference real, relevant Kenyan context: employers such as Safaricom, KCB, Equity Bank, Nation Media Group, and Unilever Kenya; job platforms such as BrighterMonday, Fuzu, and LinkedIn Kenya; gig platforms such as Glovo, Bolt, and Sendy; government programmes such as Kazi Mtaani, Ajira Digital, Hustler Fund, and TVET institutions.
+- Help the user with CV writing, cover letters, interview preparation, salary negotiation, side hustles, and career pivots.
+- Keep responses focused and actionable — 3 to 6 sentences.
+- Be encouraging but honest about the realities of the Kenyan job market.
+- You have memory of the full conversation — use it. Build on what the user has already told you so they do not have to repeat themselves.
+- If the user wants to apply for a specific job, help them prepare targeted, role-specific materials.`;
 }
 
-// ── Sleep helper ──────────────────────────────────────────────────────────────
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-// ── Gemini models — tried in order ───────────────────────────────────────────
-const MODELS = [
-  "gemini-2.0-flash",
-  "gemini-1.5-flash",
-  "gemini-1.5-flash-8b",
-];
-
-// ── Single model call ─────────────────────────────────────────────────────────
-async function callModel(model, systemPrompt, messages, apiKey) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
-  const body = {
-    system_instruction: { parts: [{ text: systemPrompt }] },
-    contents: messages.map((m) => ({
-      role: m.role === "assistant" ? "model" : "user",
-      parts: [{ text: m.content }],
-    })),
-    generationConfig: { maxOutputTokens: 800, temperature: 0.75 },
-    safetySettings: [
-      { category: "HARM_CATEGORY_HARASSMENT",        threshold: "BLOCK_NONE" },
-      { category: "HARM_CATEGORY_HATE_SPEECH",       threshold: "BLOCK_NONE" },
-      { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-      { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-    ],
-  };
-
-  const res  = await fetch(url, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body) });
-  const data = await res.json();
-
-  if (!res.ok) {
-    const err = Object.assign(new Error(data?.error?.message || `HTTP ${res.status}`), { status: res.status });
-    throw err;
-  }
-
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) {
-    const reason = data?.candidates?.[0]?.finishReason || "unknown";
-    throw Object.assign(new Error(`Empty response. Finish reason: ${reason}`), { status: 500 });
-  }
-  return text;
-}
-
-// ── Waterfall: try each model with retries ────────────────────────────────────
-async function callGemini(systemPrompt, messages) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw Object.assign(new Error("GEMINI_API_KEY not set. Add it in Railway Variables."), { status: 500 });
-
-  let lastErr;
-  for (const model of MODELS) {
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        console.log(`[gemini] model=${model} attempt=${attempt}`);
-        const text = await callModel(model, systemPrompt, messages, apiKey);
-        console.log(`[gemini] OK model=${model} chars=${text.length}`);
-        return text;
-      } catch (err) {
-        lastErr = err;
-        console.warn(`[gemini] FAIL model=${model} attempt=${attempt} status=${err.status} msg=${err.message}`);
-        if (err.status === 429 && attempt < 3) { await sleep(attempt * 2000); continue; }
-        if (err.status === 400 || err.status === 403) throw err; // hard fail — no point retrying
-        break; // other errors — try next model
-      }
-    }
-  }
-  throw lastErr || new Error("All AI models unavailable.");
-}
-
-// ── Message sanitiser ─────────────────────────────────────────────────────────
+// ── Message cleaner ───────────────────────────────────────────────────────────
 function cleanMessages(raw) {
   let msgs = raw
-    .filter((m) => m && (m.role==="user"||m.role==="assistant") && typeof m.content==="string" && m.content.trim())
-    .map((m) => ({ role: m.role, content: m.content.trim().slice(0,4000) }));
+    .filter((m) => m && ["user","assistant"].includes(m.role)
+      && typeof m.content === "string" && m.content.trim())
+    .map((m) => ({ role: m.role, content: m.content.trim().slice(0, 4000) }));
 
-  while (msgs.length && msgs[0].role !== "user") msgs.shift();       // must start with user
+  // Must start with user
+  while (msgs.length && msgs[0].role !== "user") msgs.shift();
 
+  // Strict alternation — keep last of consecutive same-role
   const alt = [];
   for (const m of msgs) {
     if (!alt.length) { alt.push(m); }
-    else if (alt[alt.length-1].role === m.role) { alt[alt.length-1] = m; } // merge consecutive same-role
+    else if (alt[alt.length - 1].role === m.role) { alt[alt.length - 1] = m; }
     else { alt.push(m); }
   }
 
-  while (alt.length && alt[alt.length-1].role !== "user") alt.pop(); // must end with user
-  return alt.slice(-20);
+  // Must end with user
+  while (alt.length && alt[alt.length - 1].role !== "user") alt.pop();
+
+  return alt.slice(-24); // keep last 24 messages for good memory
+}
+
+// ── OpenAI GPT-4o call ────────────────────────────────────────────────────────
+async function callOpenAI(systemPrompt, messages) {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw Object.assign(
+    new Error("OPENAI_API_KEY not configured. Add it in Railway Variables."), { status: 500 }
+  );
+
+  const body = {
+    model: "gpt-4o",
+    max_tokens: 800,
+    temperature: 0.75,
+    messages: [
+      { role: "system", content: systemPrompt },
+      ...messages,
+    ],
+  };
+
+  const res  = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    console.error("[openai] error:", JSON.stringify(data));
+    const msg = data?.error?.message || `HTTP ${res.status}`;
+    throw Object.assign(new Error(msg), { status: res.status });
+  }
+
+  const reply = data?.choices?.[0]?.message?.content;
+  if (!reply) throw new Error("Empty response from OpenAI");
+
+  return reply;
 }
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.get("/api/health", (_req, res) => res.json({
   status: "ok",
   timestamp: new Date().toISOString(),
-  ai: "Google Gemini (free tier)",
-  models: MODELS,
-  geminiKey: process.env.GEMINI_API_KEY ? "SET ✓" : "MISSING ✗",
+  ai: "OpenAI GPT-4o",
+  openaiKey: process.env.OPENAI_API_KEY ? "SET ✓" : "MISSING ✗",
 }));
 
 app.post("/api/chat", chatLimiter, async (req, res) => {
@@ -161,31 +143,32 @@ app.post("/api/chat", chatLimiter, async (req, res) => {
     return res.status(400).json({ error: "messages array is required." });
   if (!["wellness","career"].includes(mode))
     return res.status(400).json({ error: "mode must be wellness or career." });
-  if (!process.env.GEMINI_API_KEY)
-    return res.status(500).json({ error: "GEMINI_API_KEY not configured. Add it in Railway Variables." });
+  if (!process.env.OPENAI_API_KEY)
+    return res.status(500).json({ error: "OPENAI_API_KEY not configured. Add it in Railway Variables." });
 
   const final = cleanMessages(messages);
   if (!final.length) return res.status(400).json({ error: "No valid user message found." });
 
-  const lastUser = [...final].reverse().find((m) => m.role==="user");
+  const lastUser = [...final].reverse().find((m) => m.role === "user");
   const isCrisis = detectCrisis(lastUser?.content);
 
   console.log(`[chat] mode=${mode} user=${user?.name} msgs=${final.length}`);
 
   try {
-    const reply = await callGemini(buildSystemPrompt(mode, user||{}), final);
+    const reply = await callOpenAI(buildSystemPrompt(mode, user || {}), final);
+    console.log(`[chat] OK chars=${reply.length}`);
     res.json({ reply, crisis: isCrisis });
   } catch (err) {
-    console.error("[chat] final error:", err.status, err.message);
-    if (err.status === 403) return res.status(403).json({ error: "Gemini API key invalid. Check GEMINI_API_KEY in Railway Variables." });
-    if (err.status === 400) return res.status(400).json({ error: "Invalid AI request. Please try again." });
-    if (err.status === 500 && err.message.includes("GEMINI_API_KEY")) return res.status(500).json({ error: err.message });
-    res.status(503).json({ error: "AI temporarily unavailable. Retrying automatically — please wait a moment." });
+    console.error("[chat] error:", err.status, err.message);
+    if (err.status === 401) return res.status(401).json({ error: "OpenAI API key is invalid. Check OPENAI_API_KEY in Railway Variables." });
+    if (err.status === 429) return res.status(429).json({ error: "AI is busy. Please wait a moment and try again." });
+    if (err.status === 500 && err.message.includes("OPENAI_API_KEY")) return res.status(500).json({ error: err.message });
+    res.status(503).json({ error: "AI service error. Please try again." });
   }
 });
 
 app.post("/api/jobs", (req, res) => {
-  const { skills=[], county="Nairobi" } = req.body;
+  const { skills = [], county = "Nairobi" } = req.body;
   const ALL = [
     { id:1,  title:"Junior Data Analyst",         company:"Safaricom PLC",          type:"Full-time",     pay:"KSh 45,000/mo",        match:94, tags:["Excel","Data","Reports"],             skills:["Data entry","IT / Tech","Accounting"],       county:["Nairobi","Mombasa"] },
     { id:2,  title:"Social Media Manager",         company:"Jumia Kenya",            type:"Remote",        pay:"KSh 30,000/mo",        match:91, tags:["Instagram","TikTok","Content"],        skills:["Social media","Graphic design","Writing"],  county:["Any"] },
@@ -206,8 +189,8 @@ app.post("/api/jobs", (req, res) => {
   let matched = skills.length
     ? ALL.filter((j) => j.skills.some((s) => skills.includes(s)) || j.county.includes("Any") || j.county.includes(county))
     : ALL;
-  if (!matched.length) matched = ALL.slice(0,8);
-  matched.sort((a,b) => b.match - a.match);
+  if (!matched.length) matched = ALL.slice(0, 8);
+  matched.sort((a, b) => b.match - a.match);
   res.json({ jobs: matched });
 });
 
@@ -217,6 +200,6 @@ app.get("*", (_req, res) => res.sendFile(path.join(distPath, "index.html")));
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`✓ Akili on port ${PORT}`);
-  console.log(`✓ Gemini models: ${MODELS.join(" → ")}`);
-  console.log(`✓ Gemini key: ${process.env.GEMINI_API_KEY ? "SET ✓" : "MISSING ✗ — add GEMINI_API_KEY in Railway Variables"}`);
+  console.log(`✓ AI: OpenAI GPT-4o`);
+  console.log(`✓ OpenAI key: ${process.env.OPENAI_API_KEY ? "SET ✓" : "MISSING ✗ — add OPENAI_API_KEY in Railway Variables"}`);
 });
