@@ -1,45 +1,37 @@
 :root {
-  --teal: #0D9E75;
-  --teal-light: #E1F5EE;
-  --teal-dark: #085041;
-  --purple: #6C4FD4;
-  --purple-light: #EEEDFE;
-  --amber: #D97706;
+  --teal:        #0D9E75;
+  --teal-light:  #E6F7F1;
+  --teal-dark:   #064E3B;
+  --teal-glow:   rgba(13,158,117,0.15);
+  --purple:      #7C3AED;
+  --purple-light:#EDE9FE;
+  --amber:       #D97706;
   --amber-light: #FEF3C7;
-  --red: #DC2626;
-  --red-light: #FEE2E2;
-  --bg: #F7F6F3;
-  --surface: #FFFFFF;
-  --text: #1A1A1A;
-  --text-muted: #6B7280;
-  --border: rgba(0, 0, 0, 0.08);
-  --radius: 16px;
-  --radius-sm: 10px;
-  --radius-pill: 50px;
-  --shadow-sm: 0 2px 8px rgba(0,0,0,0.06);
-  --shadow-md: 0 4px 20px rgba(0,0,0,0.08);
+  --red:         #DC2626;
+  --red-light:   #FEF2F2;
+  --blue:        #2563EB;
+  --blue-light:  #EFF6FF;
+  --bg:          #F8FAFC;
+  --surface:     #FFFFFF;
+  --surface2:    #F1F5F9;
+  --text:        #0F172A;
+  --text-muted:  #64748B;
+  --text-faint:  #94A3B8;
+  --border:      #E2E8F0;
+  --border-strong:#CBD5E1;
+  --radius:      14px;
+  --radius-sm:   8px;
+  --radius-pill: 999px;
+  --shadow-sm:   0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md:   0 4px 16px rgba(0,0,0,0.08);
+  --shadow-lg:   0 10px 40px rgba(0,0,0,0.12);
 }
-
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-body {
-  font-family: 'Sora', sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  line-height: 1.6;
-  min-height: 100vh;
-}
-
-button {
-  font-family: 'Sora', sans-serif;
-  cursor: pointer;
-}
-
-input, textarea {
-  font-family: 'Sora', sans-serif;
-}
-
-/* Scrollbar */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 3px; }
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+html,body,#root { height:100%; }
+body { font-family:'Sora',sans-serif; background:var(--bg); color:var(--text); line-height:1.6; }
+button,input,textarea,select { font-family:'Sora',sans-serif; }
+::-webkit-scrollbar { width:5px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border-strong); border-radius:3px; }
+a { color:var(--teal); text-decoration:none; }
+a:hover { text-decoration:underline; }
