@@ -1,7 +1,7 @@
 {
   "name": "akili-backend",
   "version": "1.0.0",
-  "description": "Akili backend API — powered by Google Gemini",
+  "description": "Akili backend — powered by OpenAI GPT-4o",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
