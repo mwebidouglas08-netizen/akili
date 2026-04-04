@@ -1,209 +1,193 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import "./index.css";
 
-// ── PWA Install — smart cross-platform banner ─────────────────────────────────
-const INSTALL_DISMISSED_KEY = "akili_install_dismissed";
-
-function detectPlatform() {
-  const ua = navigator.userAgent || "";
-  const isIOS = /iphone|ipad|ipod/i.test(ua);
-  const isAndroid = /android/i.test(ua);
-  const isSafari = /safari/i.test(ua) && !/chrome/i.test(ua);
-  const isStandalone =
-    window.matchMedia("(display-mode: standalone)").matches ||
-    window.navigator.standalone === true;
-  return { isIOS, isAndroid, isSafari, isStandalone };
-}
-
-function useInstallBanner() {
-  const [nativePrompt, setNativePrompt] = useState(null);
-  const [show, setShow] = useState(false);
-  const [platform, setPlatform] = useState({});
-
-  useEffect(() => {
-    const p = detectPlatform();
-    setPlatform(p);
-
-    // Already running as installed app — never show
-    if (p.isStandalone) return;
-
-    // Already dismissed in this browser
-    const dismissed = localStorage.getItem(INSTALL_DISMISSED_KEY);
-    if (dismissed) return;
-
-    // Listen for Android/Chrome native prompt
-    const handler = (e) => {
-      e.preventDefault();
-      setNativePrompt(e);
-      setShow(true);
-    };
-    window.addEventListener("beforeinstallprompt", handler);
-
-    // For iOS Safari and all other browsers — show manual instructions banner
-    // after a short delay so it doesn't clash with page load
-    const timer = setTimeout(() => setShow(true), 3000);
-
-    window.addEventListener("appinstalled", () => {
-      setShow(false);
-      localStorage.setItem(INSTALL_DISMISSED_KEY, "1");
-    });
-
-    return () => {
-      window.removeEventListener("beforeinstallprompt", handler);
-      clearTimeout(timer);
-    };
-  }, []);
-
-  const install = async () => {
-    if (nativePrompt) {
-      nativePrompt.prompt();
-      const { outcome } = await nativePrompt.userChoice;
-      if (outcome === "accepted") {
-        setShow(false);
-        localStorage.setItem(INSTALL_DISMISSED_KEY, "1");
-      }
-      setNativePrompt(null);
-    }
-  };
-
-  const dismiss = () => {
-    setShow(false);
-    localStorage.setItem(INSTALL_DISMISSED_KEY, "1");
-  };
-
-  return { show, nativePrompt, install, dismiss, platform };
-}
+// ── PWA Install Banner ─────────────────────────────────────────────────────────
+// Shows immediately on every visit until installed or snoozed for 7 days.
+// Works on Android (native prompt), iOS (manual steps), and Desktop.
+const SNOOZE_KEY = "akili_pwa_snooze";
 
 function InstallBanner() {
-  const { show, nativePrompt, install, dismiss, platform } = useInstallBanner();
-  const [showIOSSteps, setShowIOSSteps] = useState(false);
+  const [visible, setVisible]       = useState(false);
+  const [nativePrompt, setNative]   = useState(null);
+  const [isIOS, setIsIOS]           = useState(false);
+  const [showSteps, setShowSteps]   = useState(false);
 
-  if (!show) return null;
+  useEffect(() => {
+    // Don't show if already running as installed app
+    const standalone =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      window.navigator.standalone === true;
+    if (standalone) return;
 
-  const isIOS = platform.isIOS;
-  const hasNative = !!nativePrompt;
+    // Don't show if snoozed within last 7 days
+    const snooze = localStorage.getItem(SNOOZE_KEY);
+    if (snooze && Date.now() - Number(snooze) < 7 * 24 * 60 * 60 * 1000) return;
+
+    // Detect iOS
+    const ua = navigator.userAgent || "";
+    setIsIOS(/iphone|ipad|ipod/i.test(ua));
+
+    // Catch Android/Chrome native install prompt
+    const onPrompt = (e) => { e.preventDefault(); setNative(e); };
+    window.addEventListener("beforeinstallprompt", onPrompt);
+
+    // Always show the banner — don't wait for the browser event
+    setVisible(true);
+
+    // Hide after successful install
+    window.addEventListener("appinstalled", () => {
+      setVisible(false);
+      localStorage.setItem(SNOOZE_KEY, String(Date.now() + 365 * 24 * 60 * 60 * 1000));
+    });
+
+    return () => window.removeEventListener("beforeinstallprompt", onPrompt);
+  }, []);
+
+  const snooze = () => {
+    setVisible(false);
+    localStorage.setItem(SNOOZE_KEY, String(Date.now()));
+  };
+
+  const triggerInstall = async () => {
+    if (!nativePrompt) return;
+    nativePrompt.prompt();
+    const { outcome } = await nativePrompt.userChoice;
+    if (outcome === "accepted") {
+      setVisible(false);
+      localStorage.setItem(SNOOZE_KEY, String(Date.now() + 365 * 24 * 60 * 60 * 1000));
+    }
+    setNative(null);
+  };
+
+  if (!visible) return null;
 
   return (
-    <>
-      {/* Main banner */}
+    <div style={{
+      position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 99999,
+      background: "#0A0F14",
+      borderTop: "2px solid #0D9E75",
+      fontFamily: "'Sora', sans-serif",
+      boxShadow: "0 -8px 40px rgba(0,0,0,0.7)",
+    }}>
+      {/* Header row */}
       <div style={{
-        position: "fixed", bottom: 16, left: 12, right: 12, zIndex: 99999,
-        background: "#0D1117",
-        border: "1px solid rgba(13,158,117,0.5)",
-        borderRadius: 18, overflow: "hidden",
-        boxShadow: "0 12px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(13,158,117,0.1)",
-        fontFamily: "'Sora', sans-serif",
+        display: "flex", alignItems: "center", gap: 12,
+        padding: "14px 16px 10px",
+        borderBottom: "1px solid rgba(255,255,255,0.06)",
       }}>
-        {/* Top bar */}
+        {/* Icon */}
         <div style={{
-          background: "rgba(13,158,117,0.08)",
-          borderBottom: "1px solid rgba(13,158,117,0.15)",
-          padding: "12px 16px",
-          display: "flex", alignItems: "center", gap: 12,
-        }}>
-          {/* App icon */}
-          <div style={{
-            width: 46, height: 46, borderRadius: 12,
-            background: "linear-gradient(135deg, #0D9E75, #064E3B)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            flexShrink: 0, boxShadow: "0 4px 12px rgba(13,158,117,0.4)",
-          }}>
-            <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 20, fontWeight: 700, color: "#fff" }}>A</span>
-          </div>
+          width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+          background: "#0D9E75",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontFamily: "'Space Mono',monospace", fontSize: 20,
+          fontWeight: 700, color: "#fff",
+        }}>A</div>
 
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#fff", marginBottom: 2 }}>
-              Install Akili
-            </div>
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
-              {hasNative
-                ? "Add to your home screen — free, no app store needed"
-                : isIOS
-                ? "Add to your iPhone home screen in seconds"
-                : "Install for quick access — works offline"}
-            </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>
+            Install Akili
           </div>
-
-          <button onClick={dismiss} style={{
-            background: "none", border: "none",
-            color: "rgba(255,255,255,0.3)", fontSize: 22,
-            cursor: "pointer", lineHeight: 1, padding: "4px 6px", flexShrink: 0,
-          }}>×</button>
+          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 1 }}>
+            {nativePrompt
+              ? "Tap below to add Akili to your home screen"
+              : isIOS
+              ? "Add to your iPhone home screen — free, no App Store needed"
+              : "Install as an app — works offline, opens instantly"}
+          </div>
         </div>
 
-        {/* Action area */}
-        <div style={{ padding: "12px 16px" }}>
-          {hasNative ? (
-            // Android Chrome — native install button
-            <button onClick={install} style={{
-              width: "100%", padding: "13px",
-              background: "#0D9E75", color: "#fff",
-              border: "none", borderRadius: 12,
-              fontSize: 15, fontWeight: 700,
-              cursor: "pointer", fontFamily: "'Sora',sans-serif",
-              boxShadow: "0 4px 16px rgba(13,158,117,0.4)",
-              transition: "opacity 0.2s",
-            }}>
-              Add to Home Screen
-            </button>
-          ) : isIOS ? (
-            // iOS Safari — step by step instructions
-            <>
-              <button
-                onClick={() => setShowIOSSteps((s) => !s)}
-                style={{
-                  width: "100%", padding: "13px",
-                  background: "rgba(13,158,117,0.15)",
-                  color: "#0D9E75", border: "1px solid rgba(13,158,117,0.3)",
-                  borderRadius: 12, fontSize: 15, fontWeight: 700,
-                  cursor: "pointer", fontFamily: "'Sora',sans-serif",
-                }}>
-                {showIOSSteps ? "Hide steps" : "Show me how →"}
-              </button>
-              {showIOSSteps && (
-                <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
-                  {[
-                    { n: 1, icon: "⬆️", text: 'Tap the Share button at the bottom of Safari' },
-                    { n: 2, icon: "📲", text: 'Scroll down and tap "Add to Home Screen"' },
-                    { n: 3, icon: "✅", text: 'Tap "Add" — Akili appears on your home screen' },
-                  ].map((s) => (
-                    <div key={s.n} style={{
-                      display: "flex", alignItems: "flex-start", gap: 12,
-                      background: "rgba(255,255,255,0.04)",
-                      borderRadius: 10, padding: "10px 12px",
-                    }}>
-                      <div style={{
-                        width: 28, height: 28, borderRadius: "50%",
-                        background: "rgba(13,158,117,0.2)",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: 12, fontWeight: 700, color: "#0D9E75", flexShrink: 0,
-                      }}>{s.n}</div>
-                      <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", lineHeight: 1.5, paddingTop: 4 }}>
-                        {s.icon} {s.text}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
-          ) : (
-            // Desktop / other browsers
-            <div style={{
-              display: "flex", alignItems: "center", gap: 10,
-              background: "rgba(255,255,255,0.04)", borderRadius: 12, padding: "12px 14px",
-            }}>
-              <span style={{ fontSize: 20 }}>💻</span>
-              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>
-                Click the install icon <strong style={{ color: "#0D9E75" }}>⊕</strong> in your browser address bar to install Akili on your device.
-              </div>
-            </div>
-          )}
-        </div>
+        {/* Dismiss */}
+        <button onClick={snooze} style={{
+          background: "none", border: "none", cursor: "pointer",
+          color: "rgba(255,255,255,0.3)", fontSize: 26,
+          lineHeight: 1, padding: "2px 6px", flexShrink: 0,
+        }}>×</button>
       </div>
-    </>
+
+      {/* Action area */}
+      <div style={{ padding: "12px 16px 16px" }}>
+
+        {/* Android / Chrome — native button */}
+        {nativePrompt && (
+          <button onClick={triggerInstall} style={{
+            width: "100%", padding: "14px",
+            background: "#0D9E75", color: "#fff",
+            border: "none", borderRadius: 14,
+            fontSize: 15, fontWeight: 700,
+            cursor: "pointer", fontFamily: "'Sora',sans-serif",
+            letterSpacing: "0.01em",
+            boxShadow: "0 4px 20px rgba(13,158,117,0.5)",
+          }}>
+            Add to Home Screen
+          </button>
+        )}
+
+        {/* iOS Safari — expandable steps */}
+        {!nativePrompt && isIOS && (
+          <>
+            <button onClick={() => setShowSteps((s) => !s)} style={{
+              width: "100%", padding: "13px",
+              background: "rgba(13,158,117,0.15)",
+              color: "#0D9E75",
+              border: "1px solid rgba(13,158,117,0.35)",
+              borderRadius: 14, fontSize: 15, fontWeight: 700,
+              cursor: "pointer", fontFamily: "'Sora',sans-serif",
+            }}>
+              {showSteps ? "Hide steps" : "How to install on iPhone →"}
+            </button>
+
+            {showSteps && (
+              <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                {[
+                  ["1", "Tap the Share button", "at the bottom of Safari (the box with the arrow)"],
+                  ["2", "Tap \"Add to Home Screen\"", "scroll down to find it in the menu"],
+                  ["3", "Tap \"Add\"",              "Akili will appear on your home screen"],
+                ].map(([n, title, sub]) => (
+                  <div key={n} style={{
+                    display: "flex", gap: 12, alignItems: "flex-start",
+                    background: "rgba(255,255,255,0.04)",
+                    borderRadius: 12, padding: "10px 14px",
+                  }}>
+                    <div style={{
+                      width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
+                      background: "rgba(13,158,117,0.2)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 12, fontWeight: 700, color: "#0D9E75",
+                    }}>{n}</div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "#fff" }}>{title}</div>
+                      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>{sub}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Desktop / other — address bar tip */}
+        {!nativePrompt && !isIOS && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 12,
+            background: "rgba(255,255,255,0.04)",
+            borderRadius: 14, padding: "13px 16px",
+          }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
+              background: "rgba(13,158,117,0.15)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 18,
+            }}>💻</div>
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>
+              Click the <strong style={{ color: "#0D9E75" }}>install icon ⊕</strong> in your browser address bar to install Akili as a desktop app.
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
-
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const COUNTIES = ["Nairobi","Mombasa","Kisumu","Nakuru","Eldoret","Thika","Machakos","Meru","Nyeri","Kisii","Garissa","Kakamega","Other"];
