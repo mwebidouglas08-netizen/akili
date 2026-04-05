@@ -382,7 +382,7 @@ function KaziPanel({jobs,boards,jobsLoading,onApply,onSearch}){
         <button onClick={()=>onSearch(query)} style={{...S.btn,padding:"0 18px",fontSize:13,flexShrink:0}}>Search</button>
       </div>
       <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:4,marginBottom:14}}>
-        {filters.map(f=><button key={f} onClick={()=>setFilter(f)} style={{padding:"6px 14px",borderRadius:"var(--radius-pill)",fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,transition:"all 0.15s",background:filter===f?"linear-gradient(135deg,var(--teal),var(--teal-dark))":var(--surface),color:filter===f?"#000":"var(--text-muted)",border:filter===f?"none":"1.5px solid var(--border)",fontFamily:"'Sora',sans-serif"}}>{f}</button>)}
+        {filters.map(f=><button key={f} onClick={()=>setFilter(f)} style={{padding:"6px 14px",borderRadius:"var(--radius-pill)",fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,transition:"all 0.15s",background:filter===f?"linear-gradient(135deg,var(--teal),var(--teal-dark))":"var(--surface)",color:filter===f?"#000":"var(--text-muted)",border:filter===f?"none":"1.5px solid var(--border)",fontFamily:"'Sora',sans-serif"}}>{f}</button>)}
       </div>
       <div style={{...S.label,marginBottom:10}}>{filtered.length} opportunities{filter!=="All"?` · ${filter}`:""}</div>
       {jobsLoading?<Loading/>:filtered.map(j=><JobCard key={j.id} job={j} onApply={onApply}/>)}
