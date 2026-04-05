@@ -79,7 +79,7 @@ function cleanMessages(raw) {
 }
 
 // ── Gemini AI (free, primary) ─────────────────────────────────────────────────
-const GEMINI_MODELS = ["gemini-2.0-flash","gemini-1.5-flash","gemini-1.5-flash-8b"];
+const GEMINI_MODELS = ["gemini-2.0-flash","gemini-2.0-flash-lite","gemini-1.5-flash"];
 
 async function callGeminiModel(model, systemPrompt, messages, key) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
@@ -291,4 +291,4 @@ app.listen(PORT, "0.0.0.0", () => {
   console.log(`✓ AI: Gemini ${GEMINI_MODELS.join(" → ")}`);
   console.log(`✓ Gemini key: ${process.env.GEMINI_API_KEY ? "SET ✓" : "MISSING ✗"}`);
   console.log(`✓ RapidAPI (real jobs): ${process.env.RAPIDAPI_KEY ? "SET ✓" : "not set — using curated jobs"}\n`);
-}); 
+});
