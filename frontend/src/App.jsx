@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import Chatbot from "./Chatbot.jsx";
 import "./index.css";
 
 // ── PWA Install Banner ────────────────────────────────────────────────────────
@@ -900,6 +901,7 @@ export default function App() {
       {screen==="onboarding" && <Onboarding onComplete={f=>{ store.set(STORAGE_KEY,f); setUser(f); setScreen("app"); }} />}
       {screen==="app" && user && <AppShell user={user} setUser={setUser} />}
       <InstallBanner />
+      {screen !== "splash" && <Chatbot user={user} autoOpen={false} />}
     </>
   );
 }
