@@ -292,7 +292,7 @@ function AppShell({user,setUser}){
         <div style={{maxWidth:860,margin:"0 auto",padding:"1.25rem 1rem",position:"relative",zIndex:1}}>
           {crisis&&(
             <div style={{background:"rgba(255,107,107,0.1)",border:"1px solid rgba(255,107,107,0.3)",borderRadius:"var(--radius-sm)",padding:"12px 16px",display:"flex",alignItems:"center",gap:12,marginBottom:16,backdropFilter:"blur(10px)"}}>
-              <div style={{flex:1,fontSize:13,color:"var(--red)",fontWeight:600}}>You're not alone 💙 — call <strong>0800 723 253</strong> (Befrienders Kenya, free, 24/7)</div>
+              <div style={{flex:1,fontSize:13,color:"var(--red)",fontWeight:600}}>You're not alone 💙 — call <strong>+254 722 178 177</strong> (Befrienders Kenya, free, 24/7)</div>
               <button onClick={()=>setTab("afya")} style={{...S.btn,background:"var(--red)",boxShadow:"none",padding:"7px 16px",fontSize:12,color:"#fff",whiteSpace:"nowrap"}}>Talk now</button>
             </div>
           )}
@@ -382,7 +382,7 @@ function KaziPanel({jobs,boards,jobsLoading,onApply,onSearch}){
         <button onClick={()=>onSearch(query)} style={{...S.btn,padding:"0 18px",fontSize:13,flexShrink:0}}>Search</button>
       </div>
       <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:4,marginBottom:14}}>
-        {filters.map(f=><button key={f} onClick={()=>setFilter(f)} style={{padding:"6px 14px",borderRadius:"var(--radius-pill)",fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,transition:"all 0.15s",background:filter===f?"linear-gradient(135deg,var(--teal),var(--teal-dark))":"var(--surface)",color:filter===f?"#000":"var(--text-muted)",border:filter===f?"none":"1.5px solid var(--border)",fontFamily:"'Sora',sans-serif"}}>{f}</button>)}
+        {filters.map(f=><button key={f} onClick={()=>setFilter(f)} style={{padding:"6px 14px",borderRadius:"var(--radius-pill)",fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,transition:"all 0.15s",background:filter===f?"linear-gradient(135deg,var(--teal),var(--teal-dark))":var(--surface),color:filter===f?"#000":"var(--text-muted)",border:filter===f?"none":"1.5px solid var(--border)",fontFamily:"'Sora',sans-serif"}}>{f}</button>)}
       </div>
       <div style={{...S.label,marginBottom:10}}>{filtered.length} opportunities{filter!=="All"?` · ${filter}`:""}</div>
       {jobsLoading?<Loading/>:filtered.map(j=><JobCard key={j.id} job={j} onApply={onApply}/>)}
@@ -463,7 +463,7 @@ function AfyaPanel({user,applyTarget,clearApply}){
 
   return(
     <div>
-      {crisis&&<div style={{background:"rgba(255,107,107,0.1)",border:"1px solid rgba(255,107,107,0.3)",borderRadius:"var(--radius-sm)",padding:"10px 14px",marginBottom:12,fontSize:13,color:"var(--red)",fontWeight:600}}>🆘 Crisis: <strong>0800 723 253</strong> — Befrienders Kenya (free, 24/7)</div>}
+      {crisis&&<div style={{background:"rgba(255,107,107,0.1)",border:"1px solid rgba(255,107,107,0.3)",borderRadius:"var(--radius-sm)",padding:"10px 14px",marginBottom:12,fontSize:13,color:"var(--red)",fontWeight:600}}>🆘 Crisis: <strong>+254 722 178 177</strong> — Befrienders Kenya (free, 24/7)</div>}
       {error&&<div style={{background:"rgba(251,184,64,0.1)",border:"1px solid rgba(251,184,64,0.3)",borderRadius:"var(--radius-sm)",padding:"10px 14px",fontSize:12,color:"var(--amber)",marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}><span>⚠️ {error}</span><button onClick={()=>setError(null)} style={{background:"none",border:"none",cursor:"pointer",color:"var(--amber)",fontWeight:700}}>✕</button></div>}
       <div style={{...S.card,padding:0,overflow:"hidden",display:"flex",flexDirection:"column",height:"calc(100vh - 200px)",minHeight:400,maxHeight:620}}>
         {/* Header */}
@@ -513,7 +513,7 @@ function AfyaPanel({user,applyTarget,clearApply}){
 // RESOURCES
 // ════════════════════════════════════════════════════════════════════════════
 const RESOURCES=[
-  {icon:"📞",col:"var(--teal)",title:"Befrienders Kenya",desc:"Free, confidential 24/7 crisis support.",link:"0800 723 253 (toll-free)",url:"tel:0800723253"},
+  {icon:"📞",col:"var(--teal)",title:"Befrienders Kenya",desc:"Free, confidential 24/7 crisis support.",link:"+254 722 178 177 (toll-free)",url:"tel:+254722178177"},
   {icon:"🏥",col:"var(--purple)",title:"Mathari National Hospital",desc:"Kenya's primary public psychiatric facility.",link:"+254 20 2724017",url:"tel:+254202724017"},
   {icon:"💬",col:"var(--amber)",title:"Niskize SMS Support",desc:"Text-based confidential mental health support.",link:'SMS "HELP" to 21138',url:"sms:21138"},
   {icon:"🎓",col:"var(--teal)",title:"TVETA — Vocational Training",desc:"800+ TVET institutions. Free & subsidised courses.",link:"tveta.go.ke",url:"https://www.tveta.go.ke"},
@@ -551,7 +551,7 @@ function ProfilePanel({user,mood}){
       {[["Skills",(user.skills.length>0?user.skills:["No skills added"]).map(s=><span key={s} style={{padding:"5px 12px",borderRadius:20,background:"var(--teal-dim)",color:"var(--teal)",border:"1px solid rgba(0,212,160,0.2)",fontSize:12,fontWeight:700}}>{s}</span>)],
         ["Current mood",<MoodBadge key="m" mood={mood}/>],
         ["Activity",<div key="a" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>{[["Check-ins",moodLog.length||1],["Chat msgs",chatCount]].map(([l,v])=><div key={l} style={{background:"var(--surface2)",borderRadius:"var(--radius-sm)",padding:"0.75rem"}}><div style={{fontSize:11,color:"var(--text-muted)",marginBottom:3}}>{l}</div><div style={{fontSize:22,fontWeight:800,color:"var(--text)"}}>{v}</div></div>)}</div>],
-        ["About",<div key="ab" style={{fontSize:12,color:"var(--text-muted)",lineHeight:1.7}}>Akili is free for Kenya's 18M+ youth. Data stored privately on this device only. Crisis? Call <strong style={{color:"var(--teal)"}}>0800 723 253</strong> — Befrienders Kenya, toll-free, 24/7.</div>],
+        ["About",<div key="ab" style={{fontSize:12,color:"var(--text-muted)",lineHeight:1.7}}>Akili is free for Kenya's 18M+ youth. Data stored privately on this device only. Crisis? Call <strong style={{color:"var(--teal)"}}>+254 722 178 177</strong> — Befrienders Kenya, toll-free, 24/7.</div>],
       ].map(([label,content])=>(
         <div key={label} style={{marginTop:"1.1rem",paddingTop:"1.1rem",borderTop:"1px solid var(--border)"}}>
           <div style={{...S.label,marginBottom:8}}>{label}</div>
