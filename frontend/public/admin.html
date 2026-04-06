@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Akili Admin Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --teal:#00D4A0;--teal2:#00F5B8;--teal-dim:rgba(0,212,160,0.1);
+  --purple:#A78BFA;--amber:#FBB840;--red:#FF6B6B;--blue:#60A5FA;
+  --bg:#070B0F;--bg2:#0D1117;--bg3:#111827;--bg4:#1A2332;
+  --surface:rgba(255,255,255,0.04);--surface2:rgba(255,255,255,0.07);
+  --text:#F0F6FF;--muted:#8B9AB4;--faint:#4B5A72;
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);
+  --radius:14px;--radius-sm:8px;
+}
+body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+button{font-family:'Sora',sans-serif;cursor:pointer;}
+input,textarea,select{font-family:'Sora',sans-serif;}
+::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:2px;}
+
+/* Layout */
+.app{display:flex;min-height:100vh;}
+.sidebar{width:220px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:50;transition:transform 0.3s;}
+.sidebar-logo{padding:1.25rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+.logo-text{font-family:'Space Mono',monospace;font-size:18px;font-weight:700;}
+.logo-teal{color:var(--teal);}
+.admin-badge{font-size:9px;background:var(--teal-dim);color:var(--teal);border:1px solid rgba(0,212,160,0.2);border-radius:20px;padding:2px 7px;font-weight:700;letter-spacing:0.05em;}
+.nav-items{flex:1;padding:0.75rem 0;overflow-y:auto;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;transition:all 0.15s;border-left:3px solid transparent;font-size:13px;font-weight:500;color:var(--muted);}
+.nav-item:hover{background:var(--surface);color:var(--text);}
+.nav-item.active{background:var(--teal-dim);color:var(--teal);border-left-color:var(--teal);}
+.nav-icon{font-size:16px;width:20px;text-align:center;}
+.sidebar-footer{padding:1rem;border-top:1px solid var(--border);font-size:11px;color:var(--faint);}
+
+.main{margin-left:220px;flex:1;display:flex;flex-direction:column;}
+.topbar{background:rgba(13,17,23,0.95);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:0 1.5rem;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:40;}
+.topbar-title{font-size:16px;font-weight:700;}
+.topbar-right{display:flex;align-items:center;gap:10px;}
+.content{padding:1.5rem;flex:1;}
+
+/* Cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;backdrop-filter:blur(10px);}
+.card:hover{border-color:var(--border2);}
+.grid-4{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:1.5rem;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;position:relative;overflow:hidden;}
+.stat-value{font-size:28px;font-weight:800;margin:4px 0 2px;}
+.stat-label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.06em;}
+.stat-sub{font-size:11px;color:var(--faint);margin-top:2px;}
+
+/* Buttons */
+.btn{padding:9px 20px;border-radius:50px;font-size:13px;font-weight:700;border:none;cursor:pointer;transition:all 0.2s;}
+.btn-primary{background:linear-gradient(135deg,var(--teal),#00A07A);color:#000;box-shadow:0 4px 14px rgba(0,212,160,0.25);}
+.btn-primary:hover{transform:scale(1.03);box-shadow:0 4px 20px rgba(0,212,160,0.4);}
+.btn-danger{background:rgba(255,107,107,0.15);color:var(--red);border:1px solid rgba(255,107,107,0.3);}
+.btn-danger:hover{background:rgba(255,107,107,0.25);}
+.btn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
+.btn-ghost:hover{border-color:var(--border2);background:var(--surface);}
+.btn-sm{padding:5px 12px;font-size:11px;}
+.btn-amber{background:rgba(251,184,64,0.15);color:var(--amber);border:1px solid rgba(251,184,64,0.3);}
+
+/* Forms */
+.form-group{margin-bottom:1rem;}
+.form-label{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;}
+.form-input{width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;font-size:13px;color:var(--text);outline:none;transition:border 0.2s;}
+.form-input:focus{border-color:var(--teal);}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+/* Table */
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;}
+th{padding:10px 14px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid var(--border);}
+td{padding:12px 14px;font-size:13px;border-bottom:1px solid rgba(255,255,255,0.04);}
+tr:hover td{background:var(--surface);}
+
+/* Badges */
+.badge{display:inline-block;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;}
+.badge-active{background:rgba(0,212,160,0.12);color:var(--teal);border:1px solid rgba(0,212,160,0.2);}
+.badge-inactive{background:rgba(255,255,255,0.04);color:var(--faint);border:1px solid var(--border);}
+.badge-info{background:rgba(96,165,250,0.12);color:var(--blue);}
+.badge-warn{background:rgba(251,184,64,0.12);color:var(--amber);}
+.badge-err{background:rgba(255,107,107,0.12);color:var(--red);}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem;}
+.modal{background:var(--bg3);border:1px solid var(--border2);border-radius:20px;padding:1.5rem;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;}
+.modal-title{font-size:16px;font-weight:700;}
+.modal-close{background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px;}
+
+/* Alert */
+.alert{padding:10px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;margin-bottom:1rem;display:flex;align-items:center;gap:8px;}
+.alert-success{background:rgba(0,212,160,0.1);border:1px solid rgba(0,212,160,0.2);color:var(--teal);}
+.alert-error{background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.2);color:var(--red);}
+
+/* Login */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:1rem;}
+.login-card{background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:2rem;width:100%;max-width:360px;}
+
+/* Section header */
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;}
+.section-title{font-size:14px;font-weight:700;color:var(--text);}
+
+/* Tag */
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;background:var(--surface2);color:var(--muted);border:1px solid var(--border);margin:1px;}
+
+/* Responsive */
+@media(max-width:640px){.sidebar{transform:translateX(-100%);}.sidebar.open{transform:none;}.main{margin-left:0;}.form-row{grid-template-columns:1fr;}.menu-btn{display:flex!important;}}
+.menu-btn{display:none;background:none;border:none;color:var(--text);font-size:20px;padding:4px;cursor:pointer;}
+
+#app{display:none;}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-page" class="login-wrap">
+  <div class="login-card">
+    <div style="text-align:center;margin-bottom:1.5rem;">
+      <div style="font-family:'Space Mono',monospace;font-size:32px;font-weight:700;margin-bottom:4px;">aki<span style="color:var(--teal)">li</span></div>
+      <div style="font-size:12px;color:var(--muted);font-weight:600;letter-spacing:0.08em;">ADMIN DASHBOARD</div>
+    </div>
+    <div id="login-alert" style="display:none;" class="alert alert-error"></div>
+    <div class="form-group">
+      <label class="form-label">Admin Password</label>
+      <input id="password-input" type="password" class="form-input" placeholder="Enter admin password…" onkeydown="if(event.key==='Enter')doLogin()"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">API Base URL</label>
+      <input id="api-url-input" type="text" class="form-input" placeholder="https://your-app.up.railway.app" value=""/>
+    </div>
+    <button class="btn btn-primary" style="width:100%;margin-top:4px;" onclick="doLogin()">Sign In →</button>
+    <div style="margin-top:1rem;font-size:11px;color:var(--faint);text-align:center;">Default password: akili-admin-2026<br>Set ADMIN_SECRET in Railway Variables to change</div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" class="app">
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div>
+        <div class="logo-text">aki<span class="logo-teal">li</span></div>
+        <div class="admin-badge">ADMIN</div>
+      </div>
+    </div>
+    <nav class="nav-items">
+      <div class="nav-item active" onclick="showPage('dashboard',this)"><span class="nav-icon">📊</span>Dashboard</div>
+      <div class="nav-item" onclick="showPage('jobs',this)"><span class="nav-icon">💼</span>Manage Jobs</div>
+      <div class="nav-item" onclick="showPage('post-job',this)"><span class="nav-icon">➕</span>Post New Job</div>
+      <div class="nav-item" onclick="showPage('announcements',this)"><span class="nav-icon">📢</span>Announcements</div>
+      <div class="nav-item" onclick="showPage('settings',this)"><span class="nav-icon">⚙️</span>Settings & AI</div>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="btn btn-ghost btn-sm" style="width:100%;" onclick="logout()">🚪 Sign Out</button>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+        <div class="topbar-title" id="page-title">Dashboard</div>
+      </div>
+      <div class="topbar-right">
+        <div style="font-size:11px;color:var(--muted);" id="api-url-display"></div>
+        <button class="btn btn-ghost btn-sm" onclick="refreshAll()">⟳ Refresh</button>
+      </div>
+    </div>
+
+    <div class="content">
+      <div id="global-alert" style="display:none;"></div>
+
+      <!-- DASHBOARD PAGE -->
+      <div id="page-dashboard" class="page">
+        <div class="grid-4" id="stats-grid">
+          <div class="stat-card"><div class="stat-label">Total Jobs</div><div class="stat-value" style="color:var(--teal)">—</div><div class="stat-sub">Active listings</div></div>
+          <div class="stat-card"><div class="stat-label">Chat Messages</div><div class="stat-value" style="color:var(--purple)">—</div><div class="stat-sub">AI conversations</div></div>
+          <div class="stat-card"><div class="stat-label">Job Views</div><div class="stat-value" style="color:var(--amber)">—</div><div class="stat-sub">Listings viewed</div></div>
+          <div class="stat-card"><div class="stat-label">Applications</div><div class="stat-value" style="color:var(--blue)">—</div><div class="stat-sub">Apply clicks</div></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:1.5rem;" id="status-cards">
+          <div class="card">
+            <div style="font-size:13px;font-weight:700;margin-bottom:12px;">🤖 AI Status</div>
+            <div id="ai-status-detail" style="font-size:12px;color:var(--muted);">Loading…</div>
+          </div>
+          <div class="card">
+            <div style="font-size:13px;font-weight:700;margin-bottom:12px;">📞 Crisis Contact</div>
+            <div style="font-size:18px;font-weight:800;color:var(--teal);margin-bottom:4px;" id="crisis-contact-display">+254 722 178 177</div>
+            <div style="font-size:11px;color:var(--muted);">Befrienders Kenya · Available 24/7</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-header">
+            <div class="section-title">Recent Jobs</div>
+            <button class="btn btn-primary btn-sm" onclick="showPage('post-job',document.querySelector('[onclick*=post-job]'))">+ Post Job</button>
+          </div>
+          <div class="table-wrap"><table><thead><tr><th>Title</th><th>Company</th><th>Type</th><th>Status</th><th>Actions</th></tr></thead><tbody id="recent-jobs-table"><tr><td colspan="5" style="color:var(--faint);text-align:center;">Loading…</td></tr></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- JOBS PAGE -->
+      <div id="page-jobs" class="page" style="display:none;">
+        <div class="section-header">
+          <div class="section-title">All Job Listings (<span id="jobs-count">0</span>)</div>
+          <button class="btn btn-primary btn-sm" onclick="showPage('post-job',document.querySelector('[onclick*=post-job]'))">+ Post New Job</button>
+        </div>
+        <div class="card">
+          <div style="margin-bottom:12px;"><input class="form-input" id="jobs-search" placeholder="Search jobs…" oninput="filterJobs()" style="max-width:320px;"/></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Title</th><th>Company</th><th>Type</th><th>Pay</th><th>Match</th><th>Status</th><th style="min-width:140px;">Actions</th></tr></thead>
+            <tbody id="jobs-table"><tr><td colspan="7" style="color:var(--faint);text-align:center;">Loading…</td></tr></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <!-- POST JOB PAGE -->
+      <div id="page-post-job" class="page" style="display:none;">
+        <div class="card" style="max-width:680px;">
+          <div style="font-size:16px;font-weight:700;margin-bottom:1.25rem;">Post New Job</div>
+          <div id="post-job-alert" style="display:none;"></div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Job Title *</label><input class="form-input" id="jt-title" placeholder="e.g. Junior Data Analyst"/></div>
+            <div class="form-group"><label class="form-label">Company *</label><input class="form-input" id="jt-company" placeholder="e.g. Safaricom PLC"/></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Job Type</label>
+              <select class="form-input" id="jt-type"><option>Full-time</option><option>Part-time</option><option>Gig</option><option>Remote</option><option>Contract</option><option>Freelance</option><option>Self-employed</option></select>
+            </div>
+            <div class="form-group"><label class="form-label">Pay / Salary</label><input class="form-input" id="jt-pay" placeholder="e.g. KSh 35,000/mo"/></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Match Score (1-100)</label><input class="form-input" id="jt-match" type="number" min="1" max="100" value="80"/></div>
+            <div class="form-group"><label class="form-label">County/Location</label><input class="form-input" id="jt-county" placeholder="Nairobi, Mombasa (or 'Any')"/></div>
+          </div>
+          <div class="form-group"><label class="form-label">Tags (comma-separated)</label><input class="form-input" id="jt-tags" placeholder="e.g. Excel, Data, Nairobi"/></div>
+          <div class="form-group"><label class="form-label">Skills Required (comma-separated)</label><input class="form-input" id="jt-skills" placeholder="e.g. Data entry, IT / Tech, Accounting"/></div>
+          <div class="form-group"><label class="form-label">Apply URL</label><input class="form-input" id="jt-applyUrl" placeholder="https://company.com/careers"/></div>
+          <div style="display:flex;gap:10px;margin-top:0.5rem;">
+            <button class="btn btn-primary" onclick="postJob()">Post Job →</button>
+            <button class="btn btn-ghost" onclick="showPage('jobs',document.querySelector('[onclick*=\\'jobs\\']'))">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ANNOUNCEMENTS PAGE -->
+      <div id="page-announcements" class="page" style="display:none;">
+        <div class="section-header">
+          <div class="section-title">Announcements</div>
+        </div>
+        <div class="card" style="max-width:580px;margin-bottom:1.5rem;">
+          <div style="font-size:14px;font-weight:700;margin-bottom:1rem;">New Announcement</div>
+          <div id="ann-alert" style="display:none;"></div>
+          <div class="form-group"><label class="form-label">Title *</label><input class="form-input" id="ann-title" placeholder="e.g. New jobs added for Mombasa!"/></div>
+          <div class="form-group"><label class="form-label">Message *</label><textarea class="form-input" id="ann-message" rows="3" placeholder="Your announcement message to users…" style="resize:vertical;"></textarea></div>
+          <div class="form-group"><label class="form-label">Type</label>
+            <select class="form-input" id="ann-type"><option value="info">ℹ️ Info</option><option value="success">✅ Success</option><option value="warning">⚠️ Warning</option></select>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="postAnnouncement()">Publish Announcement</button>
+        </div>
+        <div class="card">
+          <div class="section-title" style="margin-bottom:1rem;">All Announcements</div>
+          <div id="announcements-list"><div style="color:var(--faint);font-size:13px;">Loading…</div></div>
+        </div>
+      </div>
+
+      <!-- SETTINGS PAGE -->
+      <div id="page-settings" class="page" style="display:none;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="card">
+            <div style="font-size:14px;font-weight:700;margin-bottom:1rem;">🤖 AI Configuration</div>
+            <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">AI model priority order (only verified working models):</div>
+            <div id="models-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:1rem;"></div>
+            <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:12px;font-size:12px;color:var(--muted);">
+              <strong style="color:var(--text);">Gemini API Key:</strong> Set <code style="color:var(--teal);">GEMINI_API_KEY</code> in Railway Variables.<br/>
+              Get a free key at <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--teal);">aistudio.google.com/app/apikey</a>
+            </div>
+          </div>
+          <div class="card">
+            <div style="font-size:14px;font-weight:700;margin-bottom:1rem;">🔐 Admin Access</div>
+            <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">To change the admin password, set this variable in Railway:</div>
+            <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:12px;font-size:12px;color:var(--muted);margin-bottom:12px;">
+              Variable: <code style="color:var(--teal);">ADMIN_SECRET</code><br/>
+              Current: <code style="color:var(--amber);">akili-admin-2026</code> (default)<br/>
+              After setting, redeploy Railway.
+            </div>
+            <button class="btn btn-danger btn-sm" onclick="if(confirm('Reset all stats to zero?'))resetStats()">Reset All Stats</button>
+          </div>
+          <div class="card">
+            <div style="font-size:14px;font-weight:700;margin-bottom:1rem;">📞 Crisis Contact</div>
+            <div style="font-size:24px;font-weight:800;color:var(--teal);margin-bottom:6px;">+254 722 178 177</div>
+            <div style="font-size:12px;color:var(--muted);">Befrienders Kenya · 24/7 · Free call<br/>This number is hardcoded into all AI responses and the chatbot.</div>
+          </div>
+          <div class="card">
+            <div style="font-size:14px;font-weight:700;margin-bottom:1rem;">🌐 App URLs</div>
+            <div style="font-size:12px;color:var(--muted);">Public app: <span id="public-url" style="color:var(--teal);">—</span><br/><br/>Health check: <a id="health-url" href="#" target="_blank" style="color:var(--teal);">—</a><br/><br/>API: <span id="api-base-display" style="color:var(--teal);">—</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let TOKEN  = "";
+let API    = "";
+let ALL_JOBS = [];
+let ALL_ANNS = [];
+
+// ── Login ─────────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const pw  = document.getElementById("password-input").value.trim();
+  const url = document.getElementById("api-url-input").value.trim().replace(/\/$/, "");
+  if (!pw)  return showLoginAlert("Enter your admin password.", "error");
+  if (!url) return showLoginAlert("Enter your Railway app URL.", "error");
+  try {
+    const res  = await fetch(`${url}/api/admin/login`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({password:pw}) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Login failed");
+    TOKEN = data.token;
+    API   = url;
+    localStorage.setItem("akili_admin_token", TOKEN);
+    localStorage.setItem("akili_admin_url",   API);
+    document.getElementById("login-page").style.display = "none";
+    document.getElementById("app").style.display        = "flex";
+    document.getElementById("api-url-display").textContent = new URL(API).hostname;
+    loadAll();
+  } catch(e) { showLoginAlert(e.message, "error"); }
+}
+
+function showLoginAlert(msg, type) {
+  const el = document.getElementById("login-alert");
+  el.className = `alert alert-${type}`;
+  el.textContent = msg;
+  el.style.display = "flex";
+}
+
+function logout() {
+  localStorage.removeItem("akili_admin_token");
+  localStorage.removeItem("akili_admin_url");
+  location.reload();
+}
+
+// ── Auto-login if stored ──────────────────────────────────────────────────────
+window.addEventListener("load", () => {
+  const t = localStorage.getItem("akili_admin_token");
+  const u = localStorage.getItem("akili_admin_url");
+  if (t && u) {
+    TOKEN = t; API = u;
+    document.getElementById("api-url-input").value = u;
+    document.getElementById("login-page").style.display = "none";
+    document.getElementById("app").style.display        = "flex";
+    document.getElementById("api-url-display").textContent = new URL(u).hostname;
+    document.getElementById("public-url").textContent = u;
+    document.getElementById("api-base-display").textContent = u;
+    const ha = document.getElementById("health-url");
+    ha.href = `${u}/api/health`; ha.textContent = `${u}/api/health`;
+    loadAll();
+  }
+  // Pre-fill URL from current page if hosted together
+  const currentOrigin = location.origin;
+  if (currentOrigin !== "null" && !currentOrigin.startsWith("file")) {
+    document.getElementById("api-url-input").value = currentOrigin;
+  }
+});
+
+// ── API helper ────────────────────────────────────────────────────────────────
+async function adminFetch(path, opts={}) {
+  const res = await fetch(`${API}${path}`, {
+    ...opts,
+    headers: { "Content-Type":"application/json", "Authorization":`Bearer ${TOKEN}`, ...(opts.headers||{}) },
+  });
+  const data = await res.json().catch(()=>({}));
+  if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+  return data;
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function showPage(name, navEl) {
+  document.querySelectorAll(".page").forEach(p=>p.style.display="none");
+  document.querySelectorAll(".nav-item").forEach(n=>n.classList.remove("active"));
+  document.getElementById(`page-${name}`).style.display = "block";
+  if (navEl) navEl.classList.add("active");
+  const titles = { dashboard:"Dashboard", jobs:"Manage Jobs", "post-job":"Post New Job", announcements:"Announcements", settings:"Settings & AI" };
+  document.getElementById("page-title").textContent = titles[name] || name;
+  if (document.getElementById("sidebar").classList.contains("open")) toggleSidebar();
+  if (name==="jobs") renderJobsTable();
+  if (name==="announcements") renderAnnouncements();
+  if (name==="settings") renderSettings();
+}
+
+function toggleSidebar() { document.getElementById("sidebar").classList.toggle("open"); }
+
+// ── Load all data ─────────────────────────────────────────────────────────────
+async function loadAll() {
+  try {
+    const [statsData, jobsData, annsData] = await Promise.all([
+      adminFetch("/api/admin/stats"),
+      adminFetch("/api/admin/jobs"),
+      adminFetch("/api/admin/announcements"),
+    ]);
+    ALL_JOBS = jobsData.jobs || [];
+    ALL_ANNS = annsData.announcements || [];
+    renderStats(statsData);
+    renderRecentJobs();
+    renderJobsTable();
+    renderAnnouncements();
+  } catch(e) { showGlobal("Failed to load data: " + e.message, "error"); }
+}
+
+function refreshAll() { loadAll(); }
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
+function renderStats(data) {
+  const vals = [
+    [data.totalJobs,           "Total Jobs",     "var(--teal)"],
+    [data.stats?.chatMessages, "Chat Messages",  "var(--purple)"],
+    [data.stats?.jobViews,     "Job Views",      "var(--amber)"],
+    [data.stats?.applications, "Applications",   "var(--blue)"],
+  ];
+  const cards = document.querySelectorAll(".stat-card");
+  vals.forEach(([v,l,c],i) => {
+    if (cards[i]) {
+      cards[i].querySelector(".stat-value").textContent = v ?? "0";
+      cards[i].querySelector(".stat-value").style.color = c;
+    }
+  });
+  // AI status
+  document.getElementById("ai-status-detail").innerHTML = `
+    <div style="margin-bottom:6px;"><span style="color:${data.geminiKey==="SET ✓"?"var(--teal)":"var(--red)"}">●</span> Gemini API Key: <strong style="color:var(--text)">${data.geminiKey}</strong></div>
+    <div style="font-size:11px;color:var(--faint);">Models: ${(data.models||[]).join(" → ")}</div>
+  `;
+}
+
+// ── Jobs table ────────────────────────────────────────────────────────────────
+function renderRecentJobs() {
+  const tbody = document.getElementById("recent-jobs-table");
+  const jobs  = ALL_JOBS.slice(0,5);
+  tbody.innerHTML = jobs.map(j=>jobRow(j, true)).join("") || '<tr><td colspan="5" style="color:var(--faint);text-align:center;">No jobs yet</td></tr>';
+}
+
+function renderJobsTable() {
+  const q     = (document.getElementById("jobs-search")?.value||"").toLowerCase();
+  const jobs  = q ? ALL_JOBS.filter(j=>j.title.toLowerCase().includes(q)||j.company.toLowerCase().includes(q)) : ALL_JOBS;
+  document.getElementById("jobs-count").textContent = jobs.length;
+  const tbody = document.getElementById("jobs-table");
+  tbody.innerHTML = jobs.map(j=>jobRow(j, false)).join("") || '<tr><td colspan="7" style="color:var(--faint);text-align:center;">No jobs found</td></tr>';
+}
+
+function jobRow(j, mini) {
+  if (mini) return `<tr>
+    <td><div style="font-weight:600;font-size:13px;">${j.title}</div></td>
+    <td style="color:var(--muted);font-size:12px;">${j.company}</td>
+    <td><span class="tag">${j.type}</span></td>
+    <td><span class="badge ${j.active?"badge-active":"badge-inactive"}">${j.active?"Active":"Inactive"}</span></td>
+    <td><button class="btn btn-ghost btn-sm" onclick="toggleJob('${j.id}')">${j.active?"Deactivate":"Activate"}</button></td>
+  </tr>`;
+  return `<tr>
+    <td><div style="font-weight:600;font-size:13px;">${j.title}</div><div style="font-size:11px;color:var(--faint);">${(j.county||[]).join(", ")}</div></td>
+    <td style="color:var(--muted);font-size:12px;">${j.company}</td>
+    <td><span class="tag">${j.type}</span></td>
+    <td style="font-size:12px;color:var(--teal);">${j.pay}</td>
+    <td><span style="color:var(--amber);font-weight:700;">${j.match}%</span></td>
+    <td><span class="badge ${j.active?"badge-active":"badge-inactive"}">${j.active?"Active":"Inactive"}</span></td>
+    <td style="white-space:nowrap;">
+      <button class="btn btn-amber btn-sm" style="margin-right:4px;" onclick="toggleJob('${j.id}')">${j.active?"Pause":"Activate"}</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteJob('${j.id}')">Delete</button>
+    </td>
+  </tr>`;
+}
+
+function filterJobs() { renderJobsTable(); }
+
+// ── Job actions ───────────────────────────────────────────────────────────────
+async function toggleJob(id) {
+  try {
+    const data = await adminFetch(`/api/admin/jobs/${id}/toggle`, {method:"PUT"});
+    const idx  = ALL_JOBS.findIndex(j=>j.id===id);
+    if (idx!==-1) ALL_JOBS[idx] = data.job;
+    renderJobsTable(); renderRecentJobs();
+    showGlobal(`Job ${data.job.active?"activated":"deactivated"} successfully.`, "success");
+  } catch(e) { showGlobal(e.message, "error"); }
+}
+
+async function deleteJob(id) {
+  if (!confirm("Delete this job permanently?")) return;
+  try {
+    await adminFetch(`/api/admin/jobs/${id}`, {method:"DELETE"});
+    ALL_JOBS = ALL_JOBS.filter(j=>j.id!==id);
+    renderJobsTable(); renderRecentJobs();
+    showGlobal("Job deleted.", "success");
+  } catch(e) { showGlobal(e.message, "error"); }
+}
+
+async function postJob() {
+  const title    = document.getElementById("jt-title").value.trim();
+  const company  = document.getElementById("jt-company").value.trim();
+  if (!title||!company) return showAlert("post-job-alert","Title and company are required.","error");
+  const body = {
+    title, company,
+    type:     document.getElementById("jt-type").value,
+    pay:      document.getElementById("jt-pay").value.trim()||"Competitive",
+    match:    Number(document.getElementById("jt-match").value)||80,
+    county:   document.getElementById("jt-county").value.trim()||"Any",
+    tags:     document.getElementById("jt-tags").value,
+    skills:   document.getElementById("jt-skills").value,
+    applyUrl: document.getElementById("jt-applyUrl").value.trim()||"#",
+  };
+  try {
+    const data = await adminFetch("/api/admin/jobs",{method:"POST",body:JSON.stringify(body)});
+    ALL_JOBS.unshift(data.job);
+    showAlert("post-job-alert","✅ Job posted successfully!","success");
+    ["jt-title","jt-company","jt-pay","jt-county","jt-tags","jt-skills","jt-applyUrl"].forEach(id=>document.getElementById(id).value="");
+    document.getElementById("jt-match").value=80;
+  } catch(e) { showAlert("post-job-alert",e.message,"error"); }
+}
+
+// ── Announcements ─────────────────────────────────────────────────────────────
+function renderAnnouncements() {
+  const el = document.getElementById("announcements-list");
+  if (!ALL_ANNS.length) { el.innerHTML='<div style="color:var(--faint);font-size:13px;">No announcements yet.</div>'; return; }
+  el.innerHTML = ALL_ANNS.map(a=>`
+    <div style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:700;margin-bottom:3px;">${a.title}</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">${a.message}</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span class="badge badge-${a.type==="info"?"info":a.type==="warning"?"warn":"active"}">${a.type}</span>
+          <span class="badge ${a.active?"badge-active":"badge-inactive"}">${a.active?"Visible":"Hidden"}</span>
+          <span style="font-size:10px;color:var(--faint);">${new Date(a.createdAt).toLocaleDateString("en-KE")}</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;">
+        <button class="btn btn-ghost btn-sm" onclick="toggleAnn('${a.id}')">${a.active?"Hide":"Show"}</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteAnn('${a.id}')">✕</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+async function postAnnouncement() {
+  const title   = document.getElementById("ann-title").value.trim();
+  const message = document.getElementById("ann-message").value.trim();
+  if (!title||!message) return showAlert("ann-alert","Title and message are required.","error");
+  try {
+    const data = await adminFetch("/api/admin/announcements",{method:"POST",body:JSON.stringify({title,message,type:document.getElementById("ann-type").value})});
+    ALL_ANNS.unshift(data.announcement);
+    renderAnnouncements();
+    showAlert("ann-alert","✅ Announcement published!","success");
+    document.getElementById("ann-title").value="";
+    document.getElementById("ann-message").value="";
+  } catch(e) { showAlert("ann-alert",e.message,"error"); }
+}
+
+async function toggleAnn(id) {
+  try {
+    const data = await adminFetch(`/api/admin/announcements/${id}/toggle`,{method:"PUT"});
+    const idx  = ALL_ANNS.findIndex(a=>a.id===id);
+    if (idx!==-1) ALL_ANNS[idx]=data.announcement;
+    renderAnnouncements();
+  } catch(e) { showGlobal(e.message,"error"); }
+}
+
+async function deleteAnn(id) {
+  if (!confirm("Delete this announcement?")) return;
+  try {
+    await adminFetch(`/api/admin/announcements/${id}`,{method:"DELETE"});
+    ALL_ANNS = ALL_ANNS.filter(a=>a.id!==id);
+    renderAnnouncements();
+  } catch(e) { showGlobal(e.message,"error"); }
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+function renderSettings() {
+  const models = ["gemini-2.0-flash","gemini-2.0-flash-lite"];
+  document.getElementById("models-list").innerHTML = models.map((m,i)=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surface2);border-radius:var(--radius-sm);">
+      <span style="width:20px;height:20px;border-radius:50%;background:var(--teal);color:#000;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;">${i+1}</span>
+      <code style="font-size:12px;color:var(--teal);flex:1;">${m}</code>
+      <span class="badge badge-active">${i===0?"Primary":"Fallback"}</span>
+    </div>
+  `).join("");
+  document.getElementById("public-url").textContent = API;
+  document.getElementById("api-base-display").textContent = API;
+  const ha = document.getElementById("health-url");
+  if (ha) { ha.href=`${API}/api/health`; ha.textContent=`${API}/api/health`; }
+}
+
+async function resetStats() {
+  try {
+    await adminFetch("/api/admin/stats/reset",{method:"POST"});
+    showGlobal("Stats reset to zero.","success");
+    loadAll();
+  } catch(e) { showGlobal(e.message,"error"); }
+}
+
+// ── Alert helpers ─────────────────────────────────────────────────────────────
+function showGlobal(msg, type) {
+  const el = document.getElementById("global-alert");
+  el.className = `alert alert-${type==="error"?"error":"success"}`;
+  el.textContent = msg;
+  el.style.display = "flex";
+  setTimeout(()=>el.style.display="none", 4000);
+}
+
+function showAlert(id, msg, type) {
+  const el = document.getElementById(id);
+  el.className = `alert alert-${type==="error"?"error":"success"}`;
+  el.textContent = msg;
+  el.style.display = "flex";
+  if (type!=="error") setTimeout(()=>el.style.display="none", 4000);
+}
+</script>
+</body>
+</html>
