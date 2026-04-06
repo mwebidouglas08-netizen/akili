@@ -357,7 +357,7 @@ export default function Chatbot({ user, autoOpen = false }) {
             display: "flex", alignItems: "center", gap: 8, flexShrink: 0,
           }}>
             <span>🆘</span>
-            <span>Call <strong>0800 723 253</strong> — Befrienders Kenya (free, 24/7)</span>
+            <span>Call <strong>+254 722 178 177</strong> — Befrienders Kenya (free, 24/7)</span>
           </div>
         )}
 
